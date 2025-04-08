@@ -4,42 +4,62 @@ import co.edu.uceva.mensajeriaservice.exception.ResourceNotFoundException;
 import co.edu.uceva.mensajeriaservice.model.Mensaje;
 import co.edu.uceva.mensajeriaservice.repository.MensajeRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
-import java.time.LocalDateTime;
 import java.util.List;
-import java.util.stream.Collectors;
 
 @Service
 public class MensajeServiceImpl implements MensajeService {
 
     @Autowired
-    private MensajeRepository repo;
+    private MensajeRepository mensajeRepository;
 
     @Override
-    public Mensaje enviarMensaje(Mensaje mensaje) {
+    public Mensaje crearMensaje(Mensaje mensaje) {
         mensaje.setLeido(false);
-        mensaje.setFechaEnvio(LocalDateTime.now());
-        return repo.save(mensaje);
+        return mensajeRepository.save(mensaje);
     }
 
     @Override
-    public List<Mensaje> getMensajesPorUsuario(Long idUsuario) {
-        return repo.findAll().stream()
-                .filter(m -> m.getIdDestinatario().equals(idUsuario))
-                .collect(Collectors.toList());
-    }
-
-    @Override
-    public Mensaje marcarComoLeido(Long id) {
-        Mensaje mensaje = repo.findById(id)
+    public Mensaje obtenerMensajePorId(Long id) {
+        return mensajeRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Mensaje con ID " + id + " no encontrado"));
-        mensaje.setLeido(true);
-        return repo.save(mensaje);
+    }
+
+    @Override
+    public List<Mensaje> obtenerTodosLosMensajes() {
+        return mensajeRepository.findAll();
+    }
+
+    @Override
+    public Page<Mensaje> obtenerMensajesPaginados(Pageable pageable) {
+        return mensajeRepository.findAll(pageable);
+    }
+
+    @Override
+    public Mensaje actualizarMensaje(Long id, Mensaje nuevo) {
+        Mensaje actual = obtenerMensajePorId(id);
+
+        actual.setIdRemitente(nuevo.getIdRemitente());
+        actual.setIdDestinatario(nuevo.getIdDestinatario());
+        actual.setAsunto(nuevo.getAsunto());
+        actual.setCuerpo(nuevo.getCuerpo());
+
+        return mensajeRepository.save(actual);
     }
 
     @Override
     public void eliminarMensaje(Long id) {
-        repo.deleteById(id);
+        obtenerMensajePorId(id); // lanza excepción si no existe
+        mensajeRepository.deleteById(id);
+    }
+
+    @Override
+    public Mensaje marcarComoLeido(Long id) {
+        Mensaje mensaje = obtenerMensajePorId(id);
+        mensaje.setLeido(true);
+        return mensajeRepository.save(mensaje);
     }
 }
